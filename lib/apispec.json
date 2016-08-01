@@ -904,7 +904,7 @@
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "Bucket successfully created",
             "schema": {
               "type": "object",

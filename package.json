@@ -63,8 +63,8 @@
   },
   "dependencies": {
     "async": "^1.5.2",
-    "commander": "^2.9.0",
     "basic-auth": "^1.0.3",
+    "commander": "^2.9.0",
     "concat-stream": "^1.5.1",
     "cors": "^2.7.1",
     "csv-write-stream": "^2.0.0",
@@ -79,6 +79,7 @@
     "lodash": "^4.16.4",
     "merge": "^1.2.0",
     "mime-db": "^1.22.0",
+    "moment": "^2.15.1",
     "ms": "^0.7.1",
     "nodemailer": "^2.0.0",
     "readable-stream": "^2.0.5",
@@ -88,8 +89,17 @@
     "storj-service-error-types": "^1.0.0",
     "storj-service-mailer": "^1.0.0",
     "storj-service-middleware": "^1.1.0",
-    "storj-service-storage-models": "^2.1.4",
+    "storj-service-storage-models": "^5.0.0",
     "stripe": "^4.9.0",
     "through": "^2.3.8"
+  },
+  "devopsBase": {
+    "npmLinkDeps": {
+      "storj-lib": "core",
+      "storj-complex": "complex@billing",
+      "storj-service-middleware": "service-middleware",
+      "storj-service-storage-models": "service-storage-models@billing-models",
+      "storj-mongodb-adapter": "mongodb-adapter@master"
+    }
   }
 }

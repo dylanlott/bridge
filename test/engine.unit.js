@@ -46,7 +46,7 @@ describe('Engine', function() {
       var config = Config('__tmptest');
       var engine = new Engine(config);
       engine.start(function(err) {
-        expect(err).to.equal(undefined);
+        if (err) return done(err);
         expect(engine.storage).to.be.instanceOf(Storage);
         expect(engine.mailer).to.be.instanceOf(Mailer);
         expect(engine.server).to.be.instanceOf(Server);

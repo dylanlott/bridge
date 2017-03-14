@@ -1,6 +1,6 @@
 {
   "name": "storj-bridge",
-  "version": "4.2.2",
+  "version": "5.3.3",
   "description": "Access the Storj network using a simple REST API.",
   "main": "index.js",
   "directories": {
@@ -8,7 +8,8 @@
     "test": "test"
   },
   "bin": {
-    "storj-bridge": "bin/storj-bridge.js"
+    "storj-bridge": "bin/storj-bridge.js",
+    "storj-monitor": "bin/storj-monitor.js"
   },
   "scripts": {
     "dev": "nodemon bin/storj-bridge.js",
@@ -74,15 +75,16 @@
     "moment": "^2.17.1",
     "ms": "^0.7.1",
     "nodemailer": "^2.0.0",
+    "rc": "^1.1.6",
     "readable-stream": "^2.0.5",
     "redis": "^2.6.5",
-    "storj-complex": "^3.1.0",
-    "storj-lib": "^6.0.9",
-    "storj-mongodb-adapter": "^5.0.0",
+    "storj-complex": "^5.0.0",
+    "storj-lib": "^6.2.0",
+    "storj-mongodb-adapter": "^7.0.1",
     "storj-service-error-types": "^1.1.0",
     "storj-service-mailer": "^1.0.0",
     "storj-service-middleware": "^1.2.1",
-    "storj-service-storage-models": "^6.2.0",
+    "storj-service-storage-models": "^8.6.0",
     "through": "^2.3.8"
   }
 }

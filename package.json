@@ -64,6 +64,7 @@
     "express": "^4.13.3",
     "express-brute": "^1.0.1",
     "express-brute-memcached": "0.0.1",
+    "express-limiter": "^1.6.0",
     "handlebars": "^4.0.5",
     "hat": "0.0.3",
     "helmet": "^3.3.0",

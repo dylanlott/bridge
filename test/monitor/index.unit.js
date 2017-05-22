@@ -108,19 +108,29 @@ describe('Monitor', function() {
         {},
         {
           contact: {
+            _id: '3cc349ea3b302fb953b4dde04f99af23fe4a849b',
             timeoutRate: 0.001
           },
           isEstablished: false
         },
         {
           contact: {
+            _id: '8e744f9ece61fbfc6a22061678f66eea76d67690',
             timeoutRate: 0.01
           },
           isEstablished: false
         },
         {
-          contact: {},
+          contact: {
+            _id: '1d66d28271270ee56d5914d9282756b3968592ee'
+          },
           isEstablished: true
+        },
+        {
+          contact: {
+            _id: '1f22ab4bddee4f7ba918277b346cf20df3592b4b'
+          },
+          isEstablished: false
         }
       ];
       const exec = sandbox.stub().callsArgWith(0, null, results);
@@ -134,7 +144,10 @@ describe('Monitor', function() {
         }
       };
       const shard = {
-        hash: '1aa3af35db376b56545d16155f1ceb49b3a4a7c3'
+        hash: '1aa3af35db376b56545d16155f1ceb49b3a4a7c3',
+        contracts: {
+          '1f22ab4bddee4f7ba918277b346cf20df3592b4b': {}
+        }
       };
       monitor._fetchDestinations(shard, (err, mirrors) => {
         if (err) {
@@ -164,7 +177,8 @@ describe('Monitor', function() {
         }
       };
       const shard = {
-        hash: '1aa3af35db376b56545d16155f1ceb49b3a4a7c3'
+        hash: '1aa3af35db376b56545d16155f1ceb49b3a4a7c3',
+        contracts: {}
       };
       monitor._fetchDestinations(shard, (err) => {
         expect(err).to.be.instanceOf(Error);
@@ -377,7 +391,10 @@ describe('Monitor', function() {
       monitor.network = {
         getRetrievalPointer: sinon.stub().callsArgWith(2, new Error('test'))
       };
-      const shard = {};
+      const contract = new storj.Contract();
+      const shard = {
+        getContract: sandbox.stub().returns(contract)
+      };
       const contact = storj.Contact({
         address: '127.0.0.1',
         port: 100000
@@ -399,6 +416,8 @@ describe('Monitor', function() {
           .to.equal(contact);
         expect(monitor.network.getRetrievalPointer.args[0][1])
           .to.be.instanceOf(storj.Contract);
+        expect(monitor.network.getRetrievalPointer.args[0][1])
+          .to.equal(contract);
         expect(log.warn.callCount).to.equal(1);
         expect(monitor._transferShard.callCount).to.equal(2);
         expect(monitor._saveShard.callCount).to.equal(0);
@@ -416,7 +435,10 @@ describe('Monitor', function() {
         getRetrievalPointer: sinon.stub().callsArgWith(2, null, pointer),
         getMirrorNodes: sinon.stub().callsArgWith(2, new Error('timeout'))
       };
-      const shard = {};
+      const contract = new storj.Contract();
+      const shard = {
+        getContract: sandbox.stub().returns(contract)
+      };
       const contact = storj.Contact({
         address: '127.0.0.1',
         port: 100000
@@ -460,7 +482,10 @@ describe('Monitor', function() {
         getRetrievalPointer: sinon.stub().callsArgWith(2, null, pointer),
         getMirrorNodes: sinon.stub().callsArgWith(2, null, {})
       };
-      const shard = {};
+      const contract = new storj.Contract();
+      const shard = {
+        getContract: sandbox.stub().returns(contract)
+      };
       const contact = storj.Contact({
         address: '127.0.0.1',
         port: 100000

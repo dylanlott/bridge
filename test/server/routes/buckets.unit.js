@@ -243,6 +243,89 @@ describe('BucketsRouter', function() {
 
   });
 
+
+  describe('#getBucketId', function() {
+    const sandbox = sinon.sandbox.create();
+    afterEach(() => sandbox.restore());
+
+    it('give internal error', function(done) {
+      const request = httpMocks.createRequest({
+        method: 'GET',
+        url: '/bucket-ids/:name',
+        params: {
+          name: 'base64encryptedbucketname'
+        }
+      });
+      request.user = someUser;
+      const response = httpMocks.createResponse({
+        req: request,
+        eventEmitter: EventEmitter
+      });
+      sandbox.stub(
+        bucketsRouter.storage.models.Bucket,
+        'findOne'
+      ).callsArgWith(3, new Error('test'));
+      bucketsRouter.getBucketId(request, response, function(err) {
+        expect(err).to.be.instanceOf(errors.InternalError);
+        expect(err.message).to.equal('test');
+        done();
+      });
+    });
+
+    it('give notfound error', function(done) {
+      const request = httpMocks.createRequest({
+        method: 'GET',
+        url: '/bucket-ids/:name',
+        params: {
+          name: 'base64encryptedbucketname'
+        }
+      });
+      request.user = someUser;
+      const response = httpMocks.createResponse({
+        req: request,
+        eventEmitter: EventEmitter
+      });
+      sandbox.stub(
+        bucketsRouter.storage.models.Bucket,
+        'findOne'
+      ).callsArgWith(3, null, null);
+      bucketsRouter.getBucketId(request, response, function(err) {
+        expect(err).to.be.instanceOf(errors.NotFoundError);
+        expect(err.message).to.equal('Bucket not found');
+        done();
+      });
+    });
+
+    it('give bucket id', function(done) {
+      const request = httpMocks.createRequest({
+        method: 'GET',
+        url: '/bucket-ids/:name',
+        params: {
+          name: 'base64encryptedbucketname'
+        }
+      });
+      request.user = someUser;
+      const response = httpMocks.createResponse({
+        req: request,
+        eventEmitter: EventEmitter
+      });
+      sandbox.stub(
+        bucketsRouter.storage.models.Bucket,
+        'findOne'
+      ).callsArgWith(3, null, { _id: '368be0816766b28fd5f43af5' });
+      response.on('end', function() {
+        expect(response._getData().id).to.equal('368be0816766b28fd5f43af5');
+        done();
+      });
+      bucketsRouter.getBucketId(request, response, function(err) {
+        if (err) {
+          return done(err);
+        }
+      });
+    });
+
+  });
+
   describe('#createBucket', function() {
     const sandbox = sinon.sandbox.create();
     beforeEach(() => sandbox.stub(analytics, 'track'));
@@ -990,18 +1073,43 @@ describe('BucketsRouter', function() {
         req: request,
         eventEmitter: EventEmitter
       });
-      var _getBucketUnregistered = sinon.stub(
-        bucketsRouter,
-        '_getBucketUnregistered'
-      ).callsArgWith(2, new Error('Failed to get bucket'));
-      var _tokenCreate = sinon.stub(
+      sandbox.stub(
+        bucketsRouter.storage.models.Bucket,
+        'findOne'
+      ).callsArgWith(1, new Error('Failed to get bucket'));
+      sandbox.stub(
         bucketsRouter.storage.models.Token,
         'create'
       ).callsArgWith(2, new Error('Failed to create token'));
       bucketsRouter.createBucketToken(request, response, function(err) {
-        _tokenCreate.restore();
-        _getBucketUnregistered.restore();
         expect(err.message).to.equal('Failed to get bucket');
+        done();
+      });
+    });
+
+    it('should error if bucket not found', function(done) {
+      var request = httpMocks.createRequest({
+        method: 'POST',
+        url: '/buckets/:bucket_id/tokens',
+        body: {
+          operation: 'PUSH'
+        },
+        params: {
+          id: 'bucketid'
+        }
+      });
+      request.user = someUser;
+      var response = httpMocks.createResponse({
+        req: request,
+        eventEmitter: EventEmitter
+      });
+      sandbox.stub(
+        bucketsRouter.storage.models.Bucket,
+        'findOne'
+      ).callsArgWith(1, null, null);
+      bucketsRouter.createBucketToken(request, response, function(err) {
+        expect(err).to.be.instanceOf(errors.NotFoundError);
+        expect(err.message).to.equal('Bucket not found');
         done();
       });
     });
@@ -1022,17 +1130,15 @@ describe('BucketsRouter', function() {
         req: request,
         eventEmitter: EventEmitter
       });
-      var _getBucketUnregistered = sinon.stub(
-        bucketsRouter,
-        '_getBucketUnregistered'
-      ).callsArgWith(2, null, {});
-      var _tokenCreate = sinon.stub(
+      sandbox.stub(
+        bucketsRouter.storage.models.Bucket,
+        'findOne'
+      ).callsArgWith(1, null, {});
+      sandbox.stub(
         bucketsRouter.storage.models.Token,
         'create'
       ).callsArgWith(2, new Error('Failed to create token'));
       bucketsRouter.createBucketToken(request, response, function(err) {
-        _tokenCreate.restore();
-        _getBucketUnregistered.restore();
         expect(err.message).to.equal('Failed to create token');
         done();
       });
@@ -1057,22 +1163,20 @@ describe('BucketsRouter', function() {
       var _bucket = new bucketsRouter.storage.models.Bucket({
         name: 'Some Bucket'
       });
-      var _getBucketUnregistered = sinon.stub(
-        bucketsRouter,
-        '_getBucketUnregistered'
-      ).callsArgWith(2, null, _bucket);
+      sandbox.stub(
+        bucketsRouter.storage.models.Bucket,
+        'findOne'
+      ).callsArgWith(1, null, _bucket);
       var _token = new bucketsRouter.storage.models.Token({
         bucket: _bucket._id,
         operation: 'PUSH',
         _id: bucketsRouter.storage.models.Token.generate()
       });
-      var _tokenCreate = sinon.stub(
+      sandbox.stub(
         bucketsRouter.storage.models.Token,
         'create'
       ).callsArgWith(2, null, _token);
       response.on('end', function() {
-        _tokenCreate.restore();
-        _getBucketUnregistered.restore();
         expect(response._getData().token).to.equal(_token.token);
         done();
       });
@@ -1099,22 +1203,22 @@ describe('BucketsRouter', function() {
       var _bucket = new bucketsRouter.storage.models.Bucket({
         name: 'Some Bucket'
       });
-      var _getBucketUnregistered = sinon.stub(
-        bucketsRouter,
-        '_getBucketUnregistered'
-      ).callsArgWith(2, null, _bucket);
+      sandbox.stub(
+        bucketsRouter.storage.models.Bucket,
+        'findOne'
+      ).callsArgWith(1, null, _bucket);
       var _token = new bucketsRouter.storage.models.Token({
         bucket: _bucket._id,
         operation: 'PUSH',
         _id: bucketsRouter.storage.models.Token.generate()
       });
-      var _tokenCreate = sinon.stub(
+      sandbox.stub(
         bucketsRouter.storage.models.Token,
         'create'
       ).callsArgWith(2, null, _token);
       var frameSize = 100;
       var mimetype = 'plain/text';
-      var _getBucketEntry = sinon.stub(
+      sandbox.stub(
         bucketsRouter.storage.models.BucketEntry,
         'findOne'
       ).returns({
@@ -1126,9 +1230,6 @@ describe('BucketsRouter', function() {
         })
       });
       response.on('end', function() {
-        _tokenCreate.restore();
-        _getBucketUnregistered.restore();
-        _getBucketEntry.restore();
         var data = response._getData();
         expect(data.size).to.equal(frameSize);
         expect(data.mimetype).to.equal(mimetype);
@@ -1157,20 +1258,20 @@ describe('BucketsRouter', function() {
       var _bucket = new bucketsRouter.storage.models.Bucket({
         name: 'Some Bucket'
       });
-      var _getBucketUnregistered = sinon.stub(
-        bucketsRouter,
-        '_getBucketUnregistered'
-      ).callsArgWith(2, null, _bucket);
+      sandbox.stub(
+        bucketsRouter.storage.models.Bucket,
+        'findOne'
+      ).callsArgWith(1, null, _bucket);
       var _token = new bucketsRouter.storage.models.Token({
         bucket: _bucket._id,
         operation: 'PUSH',
         _id: bucketsRouter.storage.models.Token.generate()
       });
-      var _tokenCreate = sinon.stub(
+      sandbox.stub(
         bucketsRouter.storage.models.Token,
         'create'
       ).callsArgWith(2, null, _token);
-      var _getBucketEntry = sinon.stub(
+      sandbox.stub(
         bucketsRouter.storage.models.BucketEntry,
         'findOne'
       ).returns({
@@ -1179,9 +1280,6 @@ describe('BucketsRouter', function() {
         })
       });
       bucketsRouter.createBucketToken(request, response, function(err){
-        _tokenCreate.restore();
-        _getBucketUnregistered.restore();
-        _getBucketEntry.restore();
         expect(err.message).to.equal('DB error');
         done();
       });
@@ -1207,20 +1305,20 @@ describe('BucketsRouter', function() {
       var _bucket = new bucketsRouter.storage.models.Bucket({
         name: 'Some Bucket'
       });
-      var _getBucketUnregistered = sinon.stub(
-        bucketsRouter,
-        '_getBucketUnregistered'
-      ).callsArgWith(2, null, _bucket);
+      sandbox.stub(
+        bucketsRouter.storage.models.Bucket,
+        'findOne'
+      ).callsArgWith(1, null, _bucket);
       var _token = new bucketsRouter.storage.models.Token({
         bucket: _bucket._id,
         operation: 'PUSH',
         _id: bucketsRouter.storage.models.Token.generate()
       });
-      var _tokenCreate = sinon.stub(
+      sandbox.stub(
         bucketsRouter.storage.models.Token,
         'create'
       ).callsArgWith(2, null, _token);
-      var _getBucketEntry = sinon.stub(
+      sandbox.stub(
         bucketsRouter.storage.models.BucketEntry,
         'findOne'
       ).returns({
@@ -1229,9 +1327,6 @@ describe('BucketsRouter', function() {
         })
       });
       bucketsRouter.createBucketToken(request, response, function(err){
-        _tokenCreate.restore();
-        _getBucketUnregistered.restore();
-        _getBucketEntry.restore();
         expect(err.message).to.equal('Bucket entry not found');
         done();
       });
@@ -1507,7 +1602,11 @@ describe('BucketsRouter', function() {
               'ec5d318076ef86adc5771dc4b7b1ce8802bb3b9dce9f7c5a438afd1b1f52f' +
               'b5e37e3f5c8',
             type: 'sha512'
-          }
+          },
+          erasure: {
+            type: 'reedsolomon'
+          },
+          index: '0c8b74d283a4d52a32332d622bd66fdf67f7c80eed3a2854da1df0a56f7135bb'
         },
         params: {
           id: 'bucketid'
@@ -1518,7 +1617,9 @@ describe('BucketsRouter', function() {
         req: request,
         eventEmitter: EventEmitter
       });
-      function StorageEvent() {}
+      function StorageEvent(data) {
+        expect(data.storage).to.equal(12345);
+      }
       StorageEvent.prototype.save = sandbox.stub().callsArgWith(0, null);
       sandbox.stub(
         bucketsRouter.storage.models,
@@ -1535,6 +1636,7 @@ describe('BucketsRouter', function() {
       ).callsArgWith(1, null, {
         _id: 'frameid',
         locked: false,
+        storageSize: 12345,
         lock: sandbox.stub().callsArg(0)
       });
       const hmac = {
@@ -1561,8 +1663,12 @@ describe('BucketsRouter', function() {
               'ec5d318076ef86adc5771dc4b7b1ce8802bb3b9dce9f7c5a438afd1b1f52f' +
               'b5e37e3f5c8'
           },
+          erasure: {
+            type: 'reedsolomon'
+          },
           mimetype: 'application/octet-stream',
-          name: 'somefilename'
+          name: 'somefilename',
+          index: '0c8b74d283a4d52a32332d622bd66fdf67f7c80eed3a2854da1df0a56f7135bb'
         });
         expect(response._getData().hmac).to.eql(hmac);
         expect(response._getData().bucket).to.equal('bucketid');
@@ -2097,26 +2203,28 @@ describe('BucketsRouter', function() {
   });
 
   describe('#_getRetrievalToken', function() {
+    const sandbox = sinon.sandbox.create();
+    afterEach(() => sandbox.restore());
 
     it('should internal error if contract cannot load', function(done) {
-      var _load = sinon.stub(
+      sandbox.stub(
         bucketsRouter.contracts,
         'load'
       ).callsArgWith(1, new Error('Failed to load item'));
       bucketsRouter._getRetrievalToken({}, {}, function(err) {
-        _load.restore();
         expect(err.message).to.equal('Failed to load item');
         done();
       });
     });
 
-    it('should callback after timeout and not double', function(done) {
-      var _load = sinon.stub(
+    it('should callback after timeout, not double, w/ data', function(done) {
+      sandbox.stub(log, 'warn');
+      sandbox.stub(
         bucketsRouter.contracts,
         'load'
       ).callsArgWith(1, null, new storj.StorageItem({}));
-      var clock = sinon.useFakeTimers();
-      var _contactFind = sinon.stub(
+      var clock = sandbox.useFakeTimers();
+      sandbox.stub(
         bucketsRouter.storage.models.Contact,
         'find'
       ).callsArgWith(1, null, [
@@ -2126,45 +2234,57 @@ describe('BucketsRouter', function() {
           port: 1234
         })
       ]);
-      var _requestRetrievalPointer = sinon.stub(
+      sandbox.stub(
         bucketsRouter,
         '_requestRetrievalPointer',
         function(item, meta, cb) {
-          setTimeout(cb, 12000);
+          setTimeout(cb, 22000);
         }
       );
-      bucketsRouter._getRetrievalToken({}, {}, function(err) {
-        _contactFind.restore();
-        _load.restore();
+      const sPointer = {
+        index: 12,
+        hash: 'shardhash',
+        size: 65536,
+        parity: true
+      };
+      bucketsRouter._getRetrievalToken(sPointer, {}, function(err, result) {
         setImmediate(() => {
-          clock.restore();
-          _requestRetrievalPointer.restore();
-          expect(err.message).to.equal('Failed to get retrieval token');
+          if (err) {
+            return done(err);
+          }
+          expect(result).to.eql({
+            index: 12,
+            hash: 'shardhash',
+            size: 65536,
+            parity: true
+          });
+          expect(log.warn.callCount).to.equal(1);
+          expect(result.token).to.equal(undefined);
+          expect(result.operation).to.equal(undefined);
+          expect(result.farmer).to.equal(undefined);
           done();
         });
       });
-      clock.tick(12000);
+      clock.tick(22000);
     });
 
     it('should callback error if query fails', function(done) {
-      var _load = sinon.stub(
+      sandbox.stub(
         bucketsRouter.contracts,
         'load'
       ).callsArgWith(1, null, new storj.StorageItem({}));
-      var _contactFind = sinon.stub(
+      sandbox.stub(
         bucketsRouter.storage.models.Contact,
         'find'
       ).callsArgWith(1, new Error('Query failed'));
       bucketsRouter._getRetrievalToken({}, {}, function(err) {
-        _contactFind.restore();
-        _load.restore();
         expect(err.message).to.equal('Query failed');
         done();
       });
     });
 
-    it('should internal error if no token retrieved', function(done) {
-      var _load = sinon.stub(
+    it('should log error if no token retrieved, give w/ data', function(done) {
+      sandbox.stub(
         bucketsRouter.contracts,
         'load'
       ).callsArgWith(1, null, storj.StorageItem({
@@ -2175,7 +2295,7 @@ describe('BucketsRouter', function() {
           nodeid3: { data_hash: storj.utils.rmd160('') }
         }
       }));
-      var _contactFind = sinon.stub(
+      sandbox.stub(
         bucketsRouter.storage.models.Contact,
         'find'
       ).callsArgWith(1, null, [
@@ -2198,26 +2318,37 @@ describe('BucketsRouter', function() {
           lastSeen: 12
         })
       ]);
-      var _requestRetrievalPointer = sinon.stub(
+      sandbox.stub(
         bucketsRouter,
         '_requestRetrievalPointer',
         function(item, options, next) {
           next();
         }
       );
-      bucketsRouter._getRetrievalToken({}, {
+      const sPointer = {
+        index: 12,
+        hash: 'shardhash',
+        size: 65536,
+        parity: true
+      };
+      bucketsRouter._getRetrievalToken(sPointer, {
         excludeFarmers: ['nodeid3']
-      }, function(err) {
-        _contactFind.restore();
-        _load.restore();
-        _requestRetrievalPointer.restore();
-        expect(err.message).to.equal('Failed to get retrieval token');
+      }, function(err, result) {
+        if (err) {
+          return done(err);
+        }
+        expect(result).to.eql({
+          index: 12,
+          hash: 'shardhash',
+          size: 65536,
+          parity: true
+        });
         done();
       });
     });
 
     it('should callback with pointer when received', function(done) {
-      var _load = sinon.stub(
+      sandbox.stub(
         bucketsRouter.contracts,
         'load'
       ).callsArgWith(1, null, storj.StorageItem({
@@ -2228,7 +2359,7 @@ describe('BucketsRouter', function() {
           nodeid3: { data_hash: storj.utils.rmd160('') }
         }
       }));
-      var _requestRetrievalPointer = sinon.stub(
+      sandbox.stub(
         bucketsRouter,
         '_requestRetrievalPointer',
         function(item, options, next) {
@@ -2240,7 +2371,7 @@ describe('BucketsRouter', function() {
           next(null, true);
         }
       );
-      var _contactFind = sinon.stub(
+      sandbox.stub(
         bucketsRouter.storage.models.Contact,
         'find'
       ).callsArgWith(1, null, [
@@ -2267,9 +2398,6 @@ describe('BucketsRouter', function() {
       bucketsRouter._getRetrievalToken({}, {
         excludeFarmers: ['nodeid3']
       }, function(err, result) {
-        _load.restore();
-        _contactFind.restore();
-        _requestRetrievalPointer.restore();
         expect(result.token).to.equal('correct token');
         done();
       });
@@ -2395,9 +2523,7 @@ describe('BucketsRouter', function() {
         ).to.equal(1);
         expect(err).to.equal(null);
         expect(meta.pointer.token).to.equal('token');
-        expect(meta.pointer.hash).to.equal(storj.utils.rmd160(''));
         expect(meta.pointer.farmer.nodeID).to.equal(storj.utils.rmd160('nodeid'));
-        expect(meta.pointer.operation).to.equal('PULL');
         done();
       });
     });
@@ -3895,6 +4021,153 @@ it('should throw error on storage event save failure', function(done) {
 
   });
 
+  describe('#getFileId', function() {
+    const sandbox = sinon.sandbox.create();
+    afterEach(() => sandbox.restore());
+
+    it('should give internal error', function(done) {
+      var request = httpMocks.createRequest({
+        method: 'GET',
+        url: '/buckets/:bucket_id/file-ids/:name',
+        params: {
+          id: 'bucketid',
+          name: 'base64encryptedfilename'
+        }
+      });
+      request.user = someUser;
+      var response = httpMocks.createResponse({
+        req: request,
+        eventEmitter: EventEmitter
+      });
+      sandbox.stub(
+        bucketsRouter.storage.models.Bucket,
+        'findOne'
+      ).callsArgWith(3, new Error('Failed to get bucket'));
+      bucketsRouter.getFileId(request, response, function(err) {
+        expect(err).to.be.instanceOf(errors.InternalError);
+        expect(err.message).to.equal('Failed to get bucket');
+        done();
+      });
+    });
+
+    it('should give notfound error', function(done) {
+      var request = httpMocks.createRequest({
+        method: 'GET',
+        url: '/buckets/:bucket_id/file-ids/:name',
+        params: {
+          id: 'bucketid',
+          name: 'base64encryptedfilename'
+        }
+      });
+      request.user = someUser;
+      var response = httpMocks.createResponse({
+        req: request,
+        eventEmitter: EventEmitter
+      });
+      sandbox.stub(
+        bucketsRouter.storage.models.Bucket,
+        'findOne'
+      ).callsArgWith(3, null, null);
+      bucketsRouter.getFileId(request, response, function(err) {
+        expect(err).to.be.instanceOf(errors.NotFoundError);
+        expect(err.message).to.equal('Bucket not found');
+        done();
+      });
+    });
+
+    it('should give internal error', function(done) {
+      var request = httpMocks.createRequest({
+        method: 'GET',
+        url: '/buckets/:bucket_id/file-ids/:name',
+        params: {
+          id: 'bucketid',
+          name: 'base64encryptedfilename'
+        }
+      });
+      request.user = someUser;
+      var response = httpMocks.createResponse({
+        req: request,
+        eventEmitter: EventEmitter
+      });
+      sandbox.stub(
+        bucketsRouter.storage.models.Bucket,
+        'findOne'
+      ).callsArgWith(3, null, {});
+      sandbox.stub(
+        bucketsRouter.storage.models.BucketEntry,
+        'findOne'
+      ).callsArgWith(3, new Error('test'));
+      bucketsRouter.getFileId(request, response, function(err) {
+        expect(err).to.be.instanceOf(errors.InternalError);
+        expect(err.message).to.equal('test');
+        done();
+      });
+    });
+
+    it('should give notfound error', function(done) {
+      var request = httpMocks.createRequest({
+        method: 'GET',
+        url: '/buckets/:bucket_id/file-ids/:name',
+        params: {
+          id: 'bucketid',
+          name: 'base64encryptedfilename'
+        }
+      });
+      request.user = someUser;
+      var response = httpMocks.createResponse({
+        req: request,
+        eventEmitter: EventEmitter
+      });
+      sandbox.stub(
+        bucketsRouter.storage.models.Bucket,
+        'findOne'
+      ).callsArgWith(3, null, {});
+      sandbox.stub(
+        bucketsRouter.storage.models.BucketEntry,
+        'findOne'
+      ).callsArgWith(3, null, null);
+      bucketsRouter.getFileId(request, response, function(err) {
+        expect(err).to.be.instanceOf(errors.NotFoundError);
+        expect(err.message).to.equal('File not found');
+        done();
+      });
+    });
+
+    it('should give file id', function(done) {
+      var request = httpMocks.createRequest({
+        method: 'GET',
+        url: '/buckets/:bucket_id/file-ids/:name',
+        params: {
+          id: 'bucketid',
+          name: 'base64encryptedfilename'
+        }
+      });
+      request.user = someUser;
+      var response = httpMocks.createResponse({
+        req: request,
+        eventEmitter: EventEmitter
+      });
+      sandbox.stub(
+        bucketsRouter.storage.models.Bucket,
+        'findOne'
+      ).callsArgWith(3, null, {});
+      sandbox.stub(
+        bucketsRouter.storage.models.BucketEntry,
+        'findOne'
+      ).callsArgWith(3, null, { _id: '998960317b6725a3f8080c2b'});
+      response.on('end', function() {
+        expect(response.statusCode).to.equal(200);
+        expect(response._getData().id).to.equal('998960317b6725a3f8080c2b');
+        done();
+      });
+      bucketsRouter.getFileId(request, response, function(err) {
+        if (err) {
+          return done(err);
+        }
+      });
+    });
+  });
+
   describe('#getFileInfo', function() {
 
     it('should internal error if cannot get bucket', function(done) {
@@ -4006,6 +4279,8 @@ it('should throw error on storage event save failure', function(done) {
         req: request,
         eventEmitter: EventEmitter
       });
+      const index = '5bcfdacf38f0660efc7910abdc688cc0f7e4d285feb75c769ae8e41' +
+            '4bfd4c386';
       var _getBucketUnregistered = sinon.stub(
         bucketsRouter,
         '_getBucketUnregistered'
@@ -4030,7 +4305,11 @@ it('should throw error on storage event save failure', function(done) {
             value: 'f891be8e91491e4aeeb193e9e3afb49e83b6cc18df2be9732dd62545' +
               'ec5d318076ef86adc5771dc4b7b1ce8802bb3b9dce9f7c5a438afd1b1f52f' +
               'b5e37e3f5c8'
-          }
+          },
+          erasure: {
+            type: 'reedsolomon'
+          },
+          index: index
         })
       });
       response.on('end', function() {
@@ -4038,12 +4317,16 @@ it('should throw error on storage event save failure', function(done) {
         _bucketEntryFindOne.restore();
         expect(response._getData().created).to.equal('2017-03-22T19:54:34.146Z');
         expect(response._getData().filename).to.equal('package.json');
+        expect(response._getData().erasure).to.eql({
+          type: 'reedsolomon'
+        });
         expect(response._getData().hmac).to.eql({
           type: 'sha512',
           value: 'f891be8e91491e4aeeb193e9e3afb49e83b6cc18df2be9732dd62545' +
             'ec5d318076ef86adc5771dc4b7b1ce8802bb3b9dce9f7c5a438afd1b1f52f' +
             'b5e37e3f5c8'
         });
+        expect(response._getData().index).to.eql(index);
         done();
       });
       bucketsRouter.getFileInfo(request, response);

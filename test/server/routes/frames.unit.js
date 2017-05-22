@@ -375,12 +375,14 @@ describe('FramesRouter', function() {
         req: request,
         eventEmitter: EventEmitter
       });
+      const frame = new framesRouter.storage.models.Frame({
+        user: someUser._id
+      });
+      frame.addShard = sandbox.stub().callsArg(1);
       var _frameFindOne = sinon.stub(
         framesRouter.storage.models.Frame,
         'findOne'
-      ).callsArgWith(1, null, new framesRouter.storage.models.Frame({
-        user: someUser._id
-      }));
+      ).callsArgWith(1, null, frame);
       var _pointerCreate = sinon.stub(
         framesRouter.storage.models.Pointer,
         'create'
@@ -413,12 +415,14 @@ describe('FramesRouter', function() {
         req: request,
         eventEmitter: EventEmitter
       });
+      const frame = new framesRouter.storage.models.Frame({
+        user: someUser._id
+      });
+      frame.addShard = sandbox.stub().callsArg(1);
       var _frameFindOne = sinon.stub(
         framesRouter.storage.models.Frame,
         'findOne'
-      ).callsArgWith(1, null, new framesRouter.storage.models.Frame({
-        user: someUser._id
-      }));
+      ).callsArgWith(1, null, frame);
       var _pointerCreate = sinon.stub(
         framesRouter.storage.models.Pointer,
         'create'
@@ -438,6 +442,52 @@ describe('FramesRouter', function() {
         _pointerCreate.restore();
         _auditFromRecords.restore();
         expect(err.message).to.equal('Invalid audit stream');
+        done();
+      });
+    });
+
+    it('should return bad request if contract throws', function(done) {
+      var request = httpMocks.createRequest({
+        method: 'PUT',
+        url: '/frames/frameid',
+        params: {
+          frame: 'frameid'
+        },
+        body: {
+          index: 0,
+          hash: 'notahash',
+          size: -10000,
+          challenges: auditStream.getPrivateRecord().challenges,
+          tree: auditStream.getPublicRecord()
+        }
+      });
+      request.user = someUser;
+      var response = httpMocks.createResponse({
+        req: request,
+        eventEmitter: EventEmitter
+      });
+      const frame = new framesRouter.storage.models.Frame({
+        user: someUser._id
+      });
+      frame.addShard = sandbox.stub().callsArg(1);
+      sandbox.stub(
+        framesRouter.storage.models.Frame,
+        'findOne'
+      ).callsArgWith(1, null, frame);
+      sandbox.stub(
+        framesRouter.storage.models.Pointer,
+        'create'
+      ).callsArgWith(1, null, new framesRouter.storage.models.Pointer({
+        index: 0,
+        hash: storj.utils.rmd160('data'),
+        size: 1024 * 1024 * 8,
+        challenges: auditStream.getPrivateRecord().challenges,
+        tree: auditStream.getPublicRecord()
+      }));
+      framesRouter.addShardToFrame(request, response, function(err) {
+        expect(err).to.be.instanceOf(errors.BadRequestError);
+        expect(err.message)
+          .to.equal('Invalid contract specification was supplied');
         done();
       });
     });
@@ -462,12 +512,14 @@ describe('FramesRouter', function() {
         req: request,
         eventEmitter: EventEmitter
       });
+      const frame = new framesRouter.storage.models.Frame({
+        user: someUser._id
+      });
+      frame.addShard = sandbox.stub().callsArg(1);
       var _frameFindOne = sinon.stub(
         framesRouter.storage.models.Frame,
         'findOne'
-      ).callsArgWith(1, null, new framesRouter.storage.models.Frame({
-        user: someUser._id
-      }));
+      ).callsArgWith(1, null, frame);
       var _pointerCreate = sinon.stub(
         framesRouter.storage.models.Pointer,
         'create'
@@ -512,12 +564,14 @@ describe('FramesRouter', function() {
         req: request,
         eventEmitter: EventEmitter
       });
+      const frame = new framesRouter.storage.models.Frame({
+        user: someUser._id
+      });
+      frame.addShard = sandbox.stub().callsArg(1);
       var _frameFindOne = sinon.stub(
         framesRouter.storage.models.Frame,
         'findOne'
-      ).callsArgWith(1, null, new framesRouter.storage.models.Frame({
-        user: someUser._id
-      }));
+      ).callsArgWith(1, null, frame);
       var _pointerCreate = sinon.stub(
         framesRouter.storage.models.Pointer,
         'create'
@@ -573,12 +627,14 @@ describe('FramesRouter', function() {
         req: request,
         eventEmitter: EventEmitter
       });
+      const frame = new framesRouter.storage.models.Frame({
+        user: someUser._id
+      });
+      frame.addShard = sandbox.stub().callsArg(1);
       var _frameFindOne = sinon.stub(
         framesRouter.storage.models.Frame,
         'findOne'
-      ).callsArgWith(1, null, new framesRouter.storage.models.Frame({
-        user: someUser._id
-      }));
+      ).callsArgWith(1, null, frame);
       _frameFindOne.onCall(1).returns({
         populate: function() {
           return this;
@@ -640,29 +696,18 @@ describe('FramesRouter', function() {
         req: request,
         eventEmitter: EventEmitter
       });
-      var _frameFindOne = sinon.stub(
+      const frame = new framesRouter.storage.models.Frame({
+        user: someUser._id
+      });
+      frame.addShard = sandbox.stub()
+        .callsArgWith(1, new Error('test'));
+
+      const _frameFindOne = sandbox.stub(
         framesRouter.storage.models.Frame,
         'findOne'
-      ).callsArgWith(1, null, new framesRouter.storage.models.Frame({
-        user: someUser._id
-      }));
-      var _frameSave = sinon.stub(
-        framesRouter.storage.models.Frame.prototype,
-        'save'
-      ).callsArgWith(0, new Error('Cannot save frame'));
-      _frameFindOne.onCall(1).returns({
-        populate: function() {
-          return this;
-        },
-        exec: sinon.stub().callsArgWith(
-          0,
-          null,
-          new framesRouter.storage.models.Frame({
-            user: someUser._id
-          })
-        )
-      });
-      var _pointerCreate = sinon.stub(
+      ).callsArgWith(1, null, frame);
+
+      sandbox.stub(
         framesRouter.storage.models.Pointer,
         'create'
       ).callsArgWith(1, null, new framesRouter.storage.models.Pointer({
@@ -672,7 +717,8 @@ describe('FramesRouter', function() {
         challenges: auditStream.getPrivateRecord().challenges,
         tree: auditStream.getPublicRecord()
       }));
-      var _getContract = sinon.stub(
+
+      sandbox.stub(
         framesRouter,
         '_getContractForShard',
         function(contract, audit, bl, callback) {
@@ -683,17 +729,20 @@ describe('FramesRouter', function() {
           }), contract);
         }
       );
-      var _getConsign = sinon.stub(
+
+      sandbox.stub(
         framesRouter.network,
         'getConsignmentPointer'
       ).callsArgWith(3, null, { token: 'token' });
+
+      _frameFindOne.onCall(1).returns({
+        populate: sandbox.stub().returns({
+          exec: sandbox.stub().callsArgWith(0, null, frame)
+        })
+      });
       framesRouter.addShardToFrame(request, response, function(err) {
-        _frameFindOne.restore();
-        _pointerCreate.restore();
-        _getContract.restore();
-        _getConsign.restore();
-        _frameSave.restore();
-        expect(err.message).to.equal('Cannot save frame');
+        expect(err).to.be.instanceOf(errors.InternalError);
+        expect(err.message).to.equal('test');
         done();
       });
     });
@@ -709,6 +758,7 @@ describe('FramesRouter', function() {
           index: 0,
           hash: storj.utils.rmd160('data'),
           size: 1024 * 1024 * 8,
+          parity: true,
           challenges: auditStream.getPrivateRecord().challenges,
           tree: auditStream.getPublicRecord()
         }
@@ -724,12 +774,14 @@ describe('FramesRouter', function() {
         req: request,
         eventEmitter: EventEmitter
       });
+      const frame0 = new framesRouter.storage.models.Frame({
+        user: someUser._id
+      });
+      frame0.addShard = sandbox.stub().callsArg(1);
       var _frameFindOne = sinon.stub(
         framesRouter.storage.models.Frame,
         'findOne'
-      ).callsArgWith(1, null, new framesRouter.storage.models.Frame({
-        user: someUser._id
-      }));
+      ).callsArgWith(1, null, frame0);
       var _frameSave = sinon.stub(
         framesRouter.storage.models.Frame.prototype,
         'save'
@@ -737,6 +789,7 @@ describe('FramesRouter', function() {
       var frame1 = new framesRouter.storage.models.Frame({
         user: someUser._id
       });
+      frame1.addShard = sandbox.stub().callsArg(1);
       frame1.shards[0] = {
         index: 0
       };
@@ -782,6 +835,16 @@ describe('FramesRouter', function() {
         _getConsign.restore();
         _frameSave.restore();
         var result = response._getData();
+
+        expect(_pointerCreate.callCount).to.equal(1);
+        expect(_pointerCreate.args[0][0].challenges.length).to.equal(3);
+        expect(_pointerCreate.args[0][0].hash)
+          .to.equal('cd43325b85172ca28e96785d0cb4832fd62cdf43');
+        expect(_pointerCreate.args[0][0].index).to.equal(0);
+        expect(_pointerCreate.args[0][0].parity).to.equal(true);
+        expect(_pointerCreate.args[0][0].size).to.equal(8388608);
+        expect(_pointerCreate.args[0][0].tree.length).to.equal(4);
+
         expect(result.farmer.nodeID).to.equal(storj.utils.rmd160('farmer'));
         expect(result.hash).to.equal(storj.utils.rmd160('data'));
         expect(result.token).to.equal('token');
@@ -820,12 +883,14 @@ describe('FramesRouter', function() {
         req: request,
         eventEmitter: EventEmitter
       });
+      const frame0 = new framesRouter.storage.models.Frame({
+        user: someUser._id
+      });
+      frame0.addShard = sandbox.stub().callsArg(1);
       var _frameFindOne = sandbox.stub(
         framesRouter.storage.models.Frame,
         'findOne'
-      ).callsArgWith(1, null, new framesRouter.storage.models.Frame({
-        user: someUser._id
-      }));
+      ).callsArgWith(1, null, frame0);
       sandbox.stub(
         framesRouter.storage.models.Frame.prototype,
         'save'
@@ -833,6 +898,7 @@ describe('FramesRouter', function() {
       var frame1 = new framesRouter.storage.models.Frame({
         user: someUser._id
       });
+      frame1.addShard = sandbox.stub().callsArg(1);
       frame1.shards[0] = {
         index: 0
       };
@@ -904,6 +970,7 @@ describe('FramesRouter', function() {
       var frame = new framesRouter.storage.models.Frame({
         user: someUser._id,
       });
+      frame.addShard = sandbox.stub().callsArg(1);
 
       var _frameFindOne = sandbox.stub(
         framesRouter.storage.models.Frame,
@@ -918,6 +985,7 @@ describe('FramesRouter', function() {
       var frame1 = new framesRouter.storage.models.Frame({
         user: someUser._id
       });
+      frame1.addShard = sandbox.stub().callsArg(1);
       frame1.shards[0] = {
         index: 0
       };
